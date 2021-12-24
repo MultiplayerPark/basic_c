@@ -1,0 +1,11 @@
+# This is a comment
+prefix=/home/SHARE/Rtp
+exec_prefix=${prefix}
+includedir=${prefix}/include
+
+Name: mediastreamer 
+Description: A mediastreaming library for telephony applications
+Requires: ortp
+Version: 2.5.0
+Libs: -L${exec_prefix}/lib -lmediastreamer
+Cflags: -I${prefix}/include  -DMS_FIXED_POINT

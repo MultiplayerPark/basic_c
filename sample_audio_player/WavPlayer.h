@@ -1,5 +1,5 @@
 /*
- * File Name : TcpClient.h
+ * File Name : WavPlayer.h
  *
  * Copyright 2021 by pwk
  *
@@ -11,7 +11,7 @@
  *
  * Created Date : 2021-12-24
  *
- * File Description : TCP Echo Client(Linux)
+ * File Description : WAVE PLAYER(Linux)
  *
  * Release List
  * 2021-12-24 : 1st Release
@@ -19,11 +19,10 @@
 
 //#pragma once
 
-#ifndef TCPCLIENT_H
-#define TCPCLIENT_H
+#ifndef WAVPLAYER_H
+#define WAVPLAYER_H
 
-int StartTcpClient(void);
-
-int SendTcpDataFromClient(int sockNo, char* data, unsigned int dataSize);
+int PlayOnWaveFile(char* fileName, unsigned int fileNameSize);
+int StartWavePlayer(void);
 
 #endif
