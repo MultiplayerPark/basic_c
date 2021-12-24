@@ -11,7 +11,7 @@
  *
  * Created Date : 2021-12-24
  *
- * File Description : iic controller(Linux)
+ * File Description : iic controller(Linux-3.0/i.MX6)
  *
  * Release List
  * 2021-12-24 : 1st Release
