@@ -208,7 +208,7 @@ int WriteSpi(unsigned char channel, unsigned char* writeData, unsigned int write
 	memcpy( controlSpi.txBuf, writeData, writeLen );
 	memset( &spiInform, 0x00, sizeof(struct spi_ioc_transfer) );
 
-	spiInform.tx_buf = (unsigned long)controlSpi.txBuf;
+	spiInform.tx_buf = (unsigned long)controlSpi.txBuf;	// MOSI
 	spiInform.len = writeLen;
 	spiInform.delay_usecs = controlSpi.delay;
 	spiInform.speed_hz = controlSpi.speed;
@@ -239,8 +239,8 @@ int ReadSpi(unsigned char channel, unsigned char* readData, unsigned int readLen
 	memcpy( controlSpi.rxBuf, readData, readLen );
 	memset( readData, 0x00, readLen );
 
-	spiInform.tx_buf = (unsigned long)controlSpi.txBuf;
-	spiInform.rx_buf = (unsigned long)controlSpi.rxBuf;
+	spiInform.tx_buf = (unsigned long)controlSpi.txBuf;	// MOSI
+	spiInform.rx_buf = (unsigned long)controlSpi.rxBuf;	// MISO
 	spiInform.len = readLen;
 	spiInform.delay_usecs = controlSpi.delay;
 	spiInform.speed_hz = controlSpi.speed;
