@@ -17,4 +17,13 @@
  * 2021-12-24 : 1st Release
  */
 
+//#pragma once
+
+#ifndef TCPSERVER_H
+#define TCPSERVER_H
+
 int StartTcpServer(void);
+
+int SendTcpDataFromServer(const unsigned int port, const int ipAddress, char* data, unsigned int dataSize);
+
+#endif

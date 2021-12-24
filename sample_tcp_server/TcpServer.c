@@ -31,6 +31,7 @@
 #include <poll.h>
 #include <pthread.h>
 
+#include <semaphore.h>
 
 // ---------------------------------------------------------------------------------------------------- //
 // Debugging Option...											//
@@ -61,6 +62,88 @@ typedef struct st_clientInfo_t {
 static clientInfo_t clientInfoPort1[CLIENT_MAX_NUM];
 static clientInfo_t clientInfoPort2[CLIENT_MAX_NUM];
 
+static sem_t semInfo[2];
+// ---------------------------------------------------------------------------------------------------- //
+// SENDER
+
+int SendTcpDataFromServer(const unsigned int port, const int ipAddress, char* data, unsigned int dataSize)
+{
+	unsigned int loop = 0;
+	int fd = 0;
+
+	if( (data == NULL) || (dataSize <= 0) )
+		return -1;
+
+	switch( port )
+	{
+		case SAMPLE_TCP_PORT1 :
+			sem_wait(&semInfo[0]);
+			for( loop = 0 ; loop < CLIENT_MAX_NUM ; loop++ )
+			{
+				if( ipAddress == clientInfoPort1[loop].cliIpAddress )
+				{
+					fd = clientInfoPort1[loop].cliFd;
+					if( send(fd, data, dataSize, MSG_DONTWAIT) < 0 )
+						clientInfoPort1[loop].cliIpAddress = 0xFFFFFFFF;
+
+					break;
+				}
+			}
+			sem_post(&semInfo[0]);
+			break;
+		case SAMPLE_TCP_PORT2 :
+			sem_wait(&semInfo[1]);
+			for( loop = 0 ; loop < CLIENT_MAX_NUM ; loop++ )
+			{
+				if( ipAddress == clientInfoPort2[loop].cliIpAddress )
+				{
+					fd = clientInfoPort2[loop].cliFd;
+					if( send(fd, data, dataSize, MSG_DONTWAIT) < 0 )
+						clientInfoPort2[loop].cliIpAddress = 0xFFFFFFFF;
+
+					break;
+				}
+			}
+			sem_post(&semInfo[2]);
+			break;
+		default :	// 인자가 올바르지 않은 경우, 모든 서버에서 CLIENT IP를 찾아 전송.
+			sem_wait(&semInfo[0]);
+			for( loop = 0 ; loop < CLIENT_MAX_NUM ; loop++ )
+			{
+				if( ipAddress == clientInfoPort1[loop].cliIpAddress )
+				{
+					fd = clientInfoPort1[loop].cliFd;
+					if( send(fd, data, dataSize, MSG_DONTWAIT) < 0 )
+						clientInfoPort1[loop].cliIpAddress = 0xFFFFFFFF;
+
+					break;
+				}
+			}
+			sem_post(&semInfo[0]);
+
+			sem_wait(&semInfo[1]);
+			for( loop = 0 ; loop < CLIENT_MAX_NUM ; loop++ )
+			{
+				if( ipAddress == clientInfoPort2[loop].cliIpAddress )
+				{
+					fd = clientInfoPort2[loop].cliFd;
+					if( send(fd, data, dataSize, MSG_DONTWAIT) < 0 )
+						clientInfoPort2[loop].cliIpAddress = 0xFFFFFFFF;
+
+					break;
+				}
+			}
+			sem_post(&semInfo[2]);
+			break;
+	}
+
+	return 1;
+}
+
+
+// ---------------------------------------------------------------------------------------------------- //
+// RECEIVER
+
 static int* ThreadTcpServer(int localPort)
 {
 	socklen_t saddrLen;
@@ -77,6 +160,7 @@ static int* ThreadTcpServer(int localPort)
 	char temp[BUF_MAX_SIZE] = {0,};
 	char receiveData[BUF_MAX_SIZE] = {0,};
 	unsigned char duplicateFlag = FLAG_OFF;
+	sem_t* semControl = NULL;
 
 	listenFd = socket(PF_INET, SOCK_STREAM, 0);	// create socket
 	if( listenFd == -1 )
@@ -127,9 +211,13 @@ static int* ThreadTcpServer(int localPort)
 	{
 		case 5000 :
 			clientInfo = clientInfoPort1;
+			sem_init(&semInfo[0],0,1);
+			semControl = &semInfo[0];
 			break;
 		case 5002 :
 			clientInfo = clientInfoPort2;
+			sem_init(&semInfo[1],0,1);
+			semControl = &semInfo[1];
 			break;
 		default :
 			return retThread;
@@ -164,6 +252,7 @@ static int* ThreadTcpServer(int localPort)
 					// 알 수 없는 이유로 연결이 끊어지는 경우나... 뭐 그런 경우에는 클라이언트가 재 접속을 요구할 것이다.
 					if( clientInfo[loop].cliIpAddress == inet_addr(inet_ntoa(cli_addr.sin_addr)) )
 					{
+						sem_wait(semControl);
 						shutdown(clientInfo[loop].cliFd, SHUT_RDWR);
 						memset( temp, 0x00, sizeof(temp) );
 						sprintf( temp, "TCP SERVER<%d> Duplicate Client...[%s]",localPort,inet_ntoa(cli_addr.sin_addr) );
@@ -182,6 +271,7 @@ static int* ThreadTcpServer(int localPort)
 						sprintf( temp, "TCP SERVER<%d> Connection ok[%s][%d]",localPort,inet_ntoa(cli_addr.sin_addr),clientInfo[loop].cliPort );
 						printf("%s\n",temp);
 						duplicateFlag = FLAG_ON;
+						sem_post(semControl);
 						break;
 					}
 				}
@@ -222,6 +312,7 @@ static int* ThreadTcpServer(int localPort)
 		{
 			if( clientInfo[loop].cliIpAddress == 0xFFFFFFFF )	// Clear...
 			{
+				sem_wait(semControl);
 				shutdown(clientInfo[loop].cliFd, SHUT_RDWR);
 				close(clientInfo[loop].cliFd);
 				if( (sockCnt == 0) || (sockCnt == 1) )
@@ -235,6 +326,7 @@ static int* ThreadTcpServer(int localPort)
 					memset( &pollFd[loop], 0x00, sizeof(struct pollfd) );
 					clientInfo[loop].cliFd = -1;
 					--sockCnt;
+					sem_post(semControl);
 					break;
 				}
 				else
@@ -256,6 +348,7 @@ static int* ThreadTcpServer(int localPort)
 
 				loop--;
 				retPoll--;
+				sem_wait(semControl);
 				continue;
 			}
 
@@ -268,6 +361,7 @@ static int* ThreadTcpServer(int localPort)
 
 				if( retRcv == -1 )	// 비정상 종료
 				{
+					sem_wait(semControl);
 					shutdown(clientInfo[loop].cliFd, SHUT_RDWR);
 					close(clientInfo[loop].cliFd);
 					if( (sockCnt == 0) || (sockCnt == 1) )
@@ -281,6 +375,7 @@ static int* ThreadTcpServer(int localPort)
 						memset( &pollFd[loop], 0x00, sizeof(struct pollfd) );
 						clientInfo[loop].cliFd = -1;
 						--sockCnt;
+						sem_post(semControl);
 						break;
 					}
 					else
@@ -301,9 +396,11 @@ static int* ThreadTcpServer(int localPort)
 					}
 
 					loop--;
+					sem_post(semControl);
 				}
 				else if( retRcv == 0 )	// 정상 종료
 				{
+					sem_wait(semControl);
 					close(clientInfo[loop].cliFd);
 					if( (sockCnt == 0) || (sockCnt == 1) )
 					{
@@ -336,10 +433,12 @@ static int* ThreadTcpServer(int localPort)
 					}
 
 					loop--;
+					sem_post(semControl);
 				}
 				else if( retRcv > 0 )
 				{
-					// 데이터 정상 수신.
+					// 데이터 정상 수신. echo
+					SendTcpDataFromServer(localPort,clientInfo[loop].cliIpAddress,receiveData, retRcv);
 				}
 				else
 				{
@@ -362,10 +461,25 @@ static int* ThreadTcpServer(int localPort)
 		usleep( 100*1000 );
 	}
 
+	switch( localPort )
+	{
+		case 5000 :
+			sem_destroy(&semInfo[0]);
+			break;
+		case 5002 :
+			sem_destroy(&semInfo[1]);
+			break;
+		default :
+			return retThread;
+	}
+
 	pthread_exit(0);
 
 	return retThread;
 }
+
+// ---------------------------------------------------------------------------------------------------- //
+// INIT
 
 int StartTcpServer(void)
 {
@@ -387,6 +501,7 @@ int StartTcpServer(void)
 	}
 	else
 		pthread_detach(tcpServer2);
+
 
 	return 1;
 }
