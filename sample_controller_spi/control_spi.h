@@ -1,5 +1,5 @@
 /*
- * File Name : control_iic.h
+ * File Name : control_spi.h
  *
  * Copyright 2021 by pwk
  *
@@ -11,7 +11,7 @@
  *
  * Created Date : 2021-12-24
  *
- * File Description : iic controller(Linux)
+ * File Description : spi controller(Linux)
  *
  * Release List
  * 2021-12-24 : 1st Release
