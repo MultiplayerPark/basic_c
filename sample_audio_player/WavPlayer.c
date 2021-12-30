@@ -13,6 +13,13 @@
  *
  * File Description : Wave Player Module(Linux/ALSA)
  *
+ *	사실. 재생하고 싶을 때마다 호출하는 방식으로 처리하고 싶었으나,
+ *	기존에 사용하던 Open Source "bplay", "aplay" 둘 다, 버퍼링 문제로 음원 재생 중 다른 음원을 재생하면, 출력음이 남아있는 문제가 있었음
+ *	버퍼 삭제 옵션까지 넣으면서 모든 옵션을 다 사용해도 안되어서, 그냥 직접 처리. 
+ *	음원 전환 시, 어플리케이션 레벨 버퍼를 직접 삭제하고, ALSA 레벨 버퍼 즉시 삭제 옵션을 넣어서 시험 진행
+ *	약 100여회의 시험을 진행했고, 첫번째 음원 재생 타이밍(재생 시작-중간-끝) 별로 두번째 음원 전환 시험 시, 문제없이 동작하는 것 확인.
+ *	그런데 말입니다... 진짜 문제가 없는게 없는게 맞을까요?.... ALSA 공부가 더 필요할 듯:(
+ *
  * Release List
  * 2021-12-24 : 1st Release
  */
@@ -731,6 +738,10 @@ int PlayOnWaveFile(char* fileName, unsigned int fileNameSize)
 	return 1;
 }
 
+/*
+*	FUNCTION : WAV PLAYER MODULE ON
+*	WAV 파일 재생을 위한 Thread
+*/
 int StartWavePlayer(void)
 {
 	pthread_t wavePlayer;
