@@ -36,6 +36,25 @@
 #endif
 // ---------------------------------------------------------------------------------------------------- //
 
+typedef struct st_iicInform_t {
+	unsigned char iicChannel;
+	unsigned char slaveAddress;
+	unsigned short regAddress;
+	unsigned char regAddressSize;
+	unsigned char data[256];
+	unsigned int dataSize;
+}__attribute__((packed))iicInform_t;
+
+static int WriteIicToFm(iicInform_t* writeData)
+{
+	//return WriteIic();	// call write iic function
+}
+
+static int ReadIicFromFm(iicInform_t* readData)
+{
+	//return ReadIic();	// call read iic function
+}
+
 #define SI4730_CHIP_ADDRESS		0x63
 #define SI4730_RESPONSE_OK		0x80
 #define SI4730_SETTING_FREQ_RESPONSE_OK	0x81
@@ -70,5 +89,53 @@
 
 static int PowerUpSi4730(char id, unsigned char mode, unsigned char audioType)
 {
-	
+	iicInform_t initData;
+	unsigned int stackCnt = 0;
+
+	memset( &initData, 0x00, sizeof(iicInform_t) );
+
+	switch( id )
+	{
+		case FM_NUM1 :
+		case FM_NUM2 :
+			initData.iicChannel = id;	// setting iic channel inform
+			break;
+		default :
+			return -1;
+	}
+
+	initData.slaveAddress = SI4730_CHIP_ADDRESS;
+	initData.regAddress = SI4730_CMD_POWER_UP;
+	initData.regAddressSize = 1;
+
+	switch( mode )
+	{
+		case FM_RECEIVER :
+			initData.data[stackCnt++] = SI4730_DATA_POWER_UP_FMR;
+			break;
+		case AM_RECEIVER :
+			initData.data[stackCnt++] = SI4730_DATA_POWER_UP_AMR;
+			break;
+		default :
+			return -1;
+	}
+
+	switch( audioType )
+	{
+		case FM_DIGITAL_AUDIO :
+			initData.data[stackCnt++] = SI4730_DATA_POWER_UP_DA;
+			break;
+		case FM_ANALOG_AUDIO :
+			initData.data[stackCnt++] = SI4730_DATA_POWER_UP_AA;
+			break;
+		default :
+			return -1;
+	}
+
+	initData.dataSize = stackCnt;
+
+	WriteIicToFm(initData);
+
+	// wait initialize..
+	usleep( 110*1000 );
 }
