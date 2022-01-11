@@ -88,20 +88,14 @@ static int* ThreadModbus(void)
 		{
 			modbus_flush(ctx);
 			modbus_set_slave(ctx,0x01);
-			ControlSpare1_485Enable(FLAG_ON);
+			ControlSpare1_485Enable(FLAG_ON);		// RS-485 연결을 이상하게 해서... 이렇게 씀
 			length = modbus_read_registers(ctx,0x00C8,0x005A,test);
-			//length = modbus_read_registers(ctx,0x00D4,0x0008,test);
 			usleep( 10*1000 );
 			ControlSpare1_485Enable(FLAG_OFF);
 			if( length < 0 )
 			{
 				//fprintf(stderr, "modbus_read_registers fail %s\n",modbus_strerror(errno));
-				//printf("modbus_read_registers fail %s\n",modbus_strerror(errno));
-			}
-			else
-			{
-				for( loop = 0 ; loop < length ; loop++ )
-					printf("[0x%04x]",test[loop]);
+				printf("modbus_read_registers fail %s\n",modbus_strerror(errno));
 			}
 
 			delayCnt = 0;

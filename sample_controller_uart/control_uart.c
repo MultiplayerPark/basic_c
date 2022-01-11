@@ -56,6 +56,35 @@
 static struct pollfd pollFd[INT_UART_NUM];
 static sem_t semIntUart[INT_UART_NUM];
 
+static int ControlRs485(unsigned char port, unsigned char flag)
+{
+	int modemCtrl = 0;
+
+	if( pollFd[port].fd < 0 )
+		return -1;
+
+	if( ioctl(pollFd[port].fd, TIOCMBIS, &modemCtrl) < 0 )
+		return -1;
+
+	modemCtrl |= TIOCM_RTS;
+
+	switch( flag )
+	{
+		case UART_FLAG_OFF :
+			if( ioctl(pollFd[port].fd,TIOCMBIC,&modemCtrl) < 0 )
+				return -1;
+			break;
+		case UART_FLAG_OFF :
+			if( ioctl(pollFd[port].fd,TIOCMBIS,&modemCtrl) < 0 )
+				return -1;
+			break;
+		default :
+			return -1;
+	}
+
+	return 1;
+}
+
 static int SendUartData(int fd, char* data, unsigned int length)
 {
 	int ret = 0;
@@ -87,7 +116,11 @@ int SendUart1Data(char* data, unsigned int length)
 
 int SendUart2Data(char* data, unsigned int length)
 {
-	return SendUartData(pollFd[1], data, length);
+	ControlRs485(1,UART_FLAG_OFF);	// TX모드 변환
+	SendUartData(pollFd[1], data, length);
+	usleep( 30*1000 );		// TX 이후 바로 RX 모드하면 안됨.
+	ControlRs485(1,UART_FLAG_ON);	// RX 모드 변환
+	return 1;
 }
 
 static int* ThreadUartReceiver(void)
@@ -141,12 +174,19 @@ static int* ThreadUartReceiver(void)
 
 		memcpy( &newtio[cnt], &oldtio[cnt], sizeof(struct termios) );
 
-		newtio[cnt].c_cflag = baudrate | CS8 | CLOCAL | CREAD;
+		if( cnt == 0 )	// rs-232
+			newtio[cnt].c_cflag = (baudrate | CS8 | CLOCAL | CREAD);
+		else	// rs-485
+			newtio[cnt].c_cflag = (baudrate | CS8 | CREAD | CRTSCTS);
+
 		newtio[cnt].c_iflag = IGNPAR;
 		newtio[cnt].c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
 		newtio[cnt].c_oflag = 0;
 		tcflush(pollFd[cnt].fd,TCIFLUSH);
 		tcsetattr(pollFd[cnt].fd,TCSANOW,&newtio[cnt]);
+
+		if( cnt == 1 )
+			ControlRs485(cnt,UART_FLAG_ON);
 	}
 
 	printf("[UART] Initialize ok\n");

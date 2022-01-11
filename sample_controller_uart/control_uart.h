@@ -22,6 +22,9 @@
 #ifndef CONTROL_UART_H
 #define CONTROL_UART_H
 
+#define UART_FLAG_ON	1
+#define UART_FLAG_OFF	0
+
 int SendUart1Data(char* data, unsigned int length);
 int SendUart2Data(char* data, unsigned int length);
 int StartUartProcess(void);
