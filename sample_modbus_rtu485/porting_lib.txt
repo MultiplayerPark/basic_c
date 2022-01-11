@@ -1,0 +1,12 @@
+modbus library porting
+
+git을 통해 작업할 Library를 다운로드 한다.
+(Thanks, stephane!)
+
+$ git clone https://github.com/stephane/libmodbus
+
+$ CC=${CROSS_COMPILER_FULL_PATH} ./autogen.sh
+
+$ CC=${CROSS_COMPILER_FULL_PATH} ./configure ac_cv_func_malloc_0_nonnull=yes --host=arm --prefix=${OUTPUT_PATH} --enable-static --without-documentation
+
+$ CC=${CROSS_COMPILER_FULL_PATH} make install
